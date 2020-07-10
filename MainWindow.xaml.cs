@@ -1,27 +1,15 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using System.IO;
 using System.IO.Ports;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Media.TextFormatting;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace testICAM
 {
@@ -31,75 +19,20 @@ namespace testICAM
     public partial class MainWindow : Window
     {
         static JObject json;
-
-        static bool isSending = false;
+        static System.Windows.Threading.DispatcherTimer timerSend;    
+        
+        static bool isSerialPortMode = false, isHex = false, isRepeat = false, isSending = false;
         static int periodSendig = 5;
-        static System.Windows.Threading.DispatcherTimer timerSend;
-
-        static bool isSerialPortMode = false, isHex = false, isRepeat = false;
-        enum ConnectionModeEnum { None = 0, Serial = 1, Network = 2 };
+        
         [Flags]
-        enum LogFlags { None = 0, noReturn = 1, toFile = 2, toHex = 4, noTime = 8 };
-        static ConnectionModeEnum connectionMode;
+        enum LogFlags { None = 0, noReturn = 1, toFile = 2, noTime = 4 };
+
         static SerialPort serialPort;
 
         static TcpClient tcpClient;
-        static int tcpClientPort, tcpClientTimeout;
-        static IPAddress ipAddress;
         static TcpListener tcpListener;
-
-        public class cbStrings
-        {
-            public string SendString { get; set; }
-        }
-
-        public void fillComboFromJson(ComboBox cb, JObject j, string sArray, string sField, bool escaped = false)
-        {
-            string s;
-            cb.Items.Clear();
-            foreach (var currentItem in j[sArray])
-            {
-                s = currentItem.Value<string>(sField);
-                if (escaped) s = Regex.Escape(s);
-                cb.Items.Add(s);
-            }
-                                    
-            if (cb.Items.Count > 0) cb.SelectedIndex = 0;
-        }
-        public void fillJsonFromCombo(ComboBox cb, JObject j, string sArray, string sField, bool escaped = false)
-        {
-            j[sArray].Value<JArray>().Clear();
-            foreach (string s in cb.Items) 
-                j[sArray].Value<JArray>().Add(
-                    new JObject(
-                        new JProperty(sField,  
-                            (escaped ? Regex.Unescape(s)  : s )
-                        )
-                    )
-                );
-        }
-        public bool addTextToCombo(ComboBox cb, int size = 10)
-        {
-            string dataString = cb.Text;
-            bool res = false;
-
-            if (dataString.Length > 0)
-            {
-                //add sending-string to combobox items
-                if (cb.Items.Contains(dataString) == false)
-                    cb.Items.Insert(0, dataString);
-                else
-                {
-                    cb.Items.Remove(dataString);
-                    cb.Items.Insert(0, dataString);
-                    cb.SelectedIndex = 0;
-                }
-                while (cb.Items.Count > size) cb.Items.RemoveAt(cb.Items.Count - 1);
-                res = true;
-            }
-
-            return res;
-        }
+        private bool isConnected;
+        private bool isServer;
 
         public MainWindow()
         {
@@ -117,20 +50,21 @@ namespace testICAM
                     fMain.Top = (int)json["Form"]["Top"];
                     fMain.Left = (int)json["Form"]["Left"];
 
-                    fillComboFromJson(cbSend, json, "LastMessages", "Message", true);
-                    fillComboFromJson(cbIP, (JObject)json["Network"], "LastAddresses", "Address");
-                    fillComboFromJson(cbPort, (JObject)json["Network"], "LastPorts", "Port");
+                    cbSend.FillComboFromJson( json, "LastMessages", "Message", true);
+                    cbIP.FillComboFromJson( (JObject)json["Network"], "LastAddresses", "Address");
+                    cbPort.FillComboFromJson( (JObject)json["Network"], "LastPorts", "Port");
                 }
             }
             catch (Exception e)
             {
-                LogAdd($"Ошибка загрузки настроек \"{jsonFile}\"\n{e.Message}");
+                LogAdd($"Ошибка загрузки настроек [{jsonFile}] {Environment.NewLine} {e.Message}");
             }
-            if (cbSerialPort.Items.Count > 0) cbSerialPort.SelectedIndex = 0;
+            cbSerialPort.SelectedIndex = 0;
+
             serialPort = new SerialPort();
 
             timerSend = new System.Windows.Threading.DispatcherTimer();
-            timerSend.Tick += dispatcherTimerSend_Tick;
+            timerSend.Tick += DispatcherTimerSend_Tick;
             timerSend.Interval = new TimeSpan(0, 0, periodSendig);
             timerSend.Start();
 
@@ -143,93 +77,74 @@ namespace testICAM
             if (serialPort.IsOpen) serialPort.Close();
         }
 
-        private void btnConnect_Click(object sender, RoutedEventArgs e)
-        {
-            string connectMsg = "Подключение: ";
-            Parity[] a = { Parity.None, Parity.Even, Parity.Odd };
+        private void btnConnect_Click(object sender, RoutedEventArgs ea)
+        {            
+            LogAdd("Подключение: ", LogFlags.noReturn);
+            isConnected = false;
 
-            if (isSerialPortMode)
+            if (isSerialPortMode) //подключение - последовательный порт
             {
-                if (cbSerialPort.Text.Length > 0)
-                {
-                    json["SerialPort"]["LastPort"]["Port"] = cbSerialPort.Text;
-                    json["SerialPort"]["LastPort"]["Speed"] = Convert.ToInt32(cbSpeed.Text);
-                    json["SerialPort"]["LastPort"]["Parity"] = cbParity.Text;
-                    connectMsg += $"{cbSerialPort.Text}:{cbSpeed.Text}, {cbParity.Text}; ";
+                string name = cbSerialPort.Text;
+                int speed = int.Parse(cbSpeed.Text);
+                Parity parity = (Parity)Enum.Parse( typeof(Parity), cbParity.Text );
 
-                    serialPort.Close();
-                    serialPort.PortName = cbSerialPort.Text;
-                    serialPort.BaudRate = Int32.Parse(cbSpeed.Text);
-                    serialPort.Parity = a[cbParity.SelectedIndex];
-                    serialPort.WriteTimeout = 500;
-                    serialPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
-
-                    try
-                    {
-                        serialPort.Open();
-                    }
-                    catch (Exception Exception1)
-                    {
-                        connectMsg += ($"Ошибка открытия последовательного порта! " + Exception1.Message);
-                    }
-                    if (serialPort.IsOpen) connectionMode = ConnectionModeEnum.Serial;
-                }
-                else
-                    connectMsg += "Не указан последовательный порт";
-            }
-            else
-            {
-                tcpClientTimeout = Int32.Parse(cbTimeout.Text);
-                
-                connectMsg += $"[{cbIP.Text}:{cbPort.Text}], таймаут={tcpClientTimeout}; ";
+                LogAdd($"{name}:{speed}, {parity}; ", LogFlags.noReturn);
 
                 try
                 {
-                    if (addTextToCombo(cbIP, 15) && addTextToCombo(cbPort))
-                    {
-                        tcpClientPort = Int16.Parse(cbPort.Text);
-                        ipAddress = IPAddress.Parse(cbIP.Text);
-                        json["Network"]["TimeOut"] = Convert.ToInt32(tcpClientTimeout);
-                        
-                        if (tcpClient != null)
-                            if (tcpClient.Connected)
-                                tcpClient.Close();
-                        /*
-                        //async network connection
-                        var connectionTask = tcpClient
-                            .ConnectAsync(cbIP.Text, tcpClientPort).ContinueWith(task =>
-                            {
-                                return task.IsFaulted ? null : tcpClient;
-                            }, TaskContinuationOptions.ExecuteSynchronously);
-                        var timeoutTask = Task.Delay(tcpClientTimeout)
-                            .ContinueWith<TcpClient>(task => null, TaskContinuationOptions.ExecuteSynchronously);
-                        var resultTask = Task.WhenAny(connectionTask, timeoutTask).Unwrap();
-
-                        resultTask.Wait();
-                        var resultTcpClient = resultTask.Result;
-                        // Or shorter by using `await`:
-                        // var resultTcpClient = await resultTask;
-
-                        if (resultTcpClient != null)
-                        {
-                            connectMsg += "Ok";
-                        }
-                        else
-                        {
-                            connectMsg += $" Таймаут подключения по сети!";
-                        }
-                        */
-                    }
+                    isConnected = serialPort.ConnectTo(name, speed, parity);
                 }
-                catch (Exception Exception1)
+                catch (Exception e)
                 {
-                    connectMsg += ($"Ошибка подключения по сети! " + Exception1.Message);
+                    LogAdd(e.Message);
                 }
+                finally
+                {
+                    serialPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
 
-
+                    json["SerialPort"]["LastPort"]["Name"] = name;
+                    json["SerialPort"]["LastPort"]["Speed"] = speed;
+                    json["SerialPort"]["LastPort"]["Parity"] = parity.ToString();
+                    LogAdd("Ok");
+                }
             }
-            LogAdd(connectMsg);
+            else //подключение по TCP
+            {
+                IPAddress ipAddress = IPAddress.Any;
+                string IP = cbIP.Text;
+                int port, timeout;
 
+                if (cbIP.CheckTextAndAdd() && cbPort.CheckTextAndAdd() && 
+                    IPAddress.TryParse(cbIP.Text, out ipAddress) &&
+                    int.TryParse(cbPort.Text, out port) && 
+                    int.TryParse(cbTimeout.Text, out timeout))
+                {
+                    LogAdd($"{IP}:{port}, timeout={timeout} ms; ", LogFlags.noReturn);
+
+                    try
+                    {
+                        if (tcpClient == null)
+                            tcpClient = new TcpClient();
+
+                        //tcpClient.Close();
+                        tcpClient.SendTimeout = timeout;
+                        tcpClient.ReceiveTimeout = timeout;
+
+                        tcpClient.Connect(IP, port);
+                    }
+                    catch (Exception e)
+                    {
+                        LogAdd(e.Message);
+                    }
+                    finally
+                    {
+                        isConnected = true;
+                        json["Network"]["TimeOut"] = timeout;
+                        LogAdd("Ok");
+                    }
+                } else
+                    LogAdd("Не верно указаны параметры подключения");
+            }
         }
 
         static readonly object writeLock = new object();
@@ -237,30 +152,26 @@ namespace testICAM
         private void LogAdd(string message, LogFlags flags = LogFlags.None)
         {
             if (fMain.IsInitialized == false) return;
-            if (flags.HasFlag(LogFlags.toHex))
-            {
-                byte[] bytes = Encoding.ASCII.GetBytes(message);
-                message = "";
-                foreach (byte b in bytes)
-                    message += string.Format("{0:X2} ", b);
-            }
-            if ((chkLogTime.IsChecked.Value == true) && (flags.HasFlag(LogFlags.noTime) == false))
-            {
-                message = DateTime.Now.ToString("yyyy-MM-dd HH\\:mm\\:ss") + "> " + message;
-            }
-            if (!flags.HasFlag(LogFlags.noReturn)) message += Environment.NewLine;
 
+            //add time
+            if ((chkLogTime.IsChecked.Value == true) && (flags.HasFlag(LogFlags.noTime) == false))
+                message = DateTime.Now.ToString("yyyy-MM-dd HH\\:mm\\:ss") + "> " + message;
+
+            //new line
+            if (!flags.HasFlag(LogFlags.noReturn)) message += Environment.NewLine;
+            
+            //write to file
             if (flags.HasFlag(LogFlags.toFile))
                 lock (writeLock)
                     try
                     {
                         File.AppendAllText(AppDomain.CurrentDomain.BaseDirectory + "log.txt", message);
                     }
-                    catch
+                    catch (Exception e)
                     {
-                        message += "[writeFileError]";
+                        message += "[writeFileError]"+e.Message;
                     }
-
+            
             txtLog.AppendText(message);
             txtLog.ScrollToEnd();
         }
@@ -273,30 +184,21 @@ namespace testICAM
 
         private void btnMake_Click(object sender, RoutedEventArgs e)
         {
-
             fMake make = new fMake();
-            make.Owner = this;
-            make.Show();
-        }
-
-        private void tbTimeout_PreviewTextInput(object sender, TextCompositionEventArgs e)
-        {
-            Regex regex = new Regex("[^0-9]+");
-            e.Handled = regex.IsMatch(e.Text);
+            if (make.ShowDialog() == true)
+                cbSend.Text = fMake.SendString;
         }
 
         void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
         {
             Thread.Sleep(100); //wait all symbols            
             SerialPort sp = (SerialPort)sender;
-            string inData = "";
+            string inData = sp.ReadExisting();
 
+            // process data on the GUI thread
             Application.Current.Dispatcher.Invoke(new Action(() =>
-            {
-                inData = sp.ReadExisting();
-                LogAdd("Recv: ", LogFlags.noReturn);
-                LogAdd(inData, (isHex ? LogFlags.toHex : LogFlags.None));
-            }));
+                LogAdd("Recv: " + inData.ToHex(isHex))
+            ));
         }
 
         private void rbSerial_Checked(object sender, RoutedEventArgs e)
@@ -336,15 +238,17 @@ namespace testICAM
             json["Form"]["Top"] = Convert.ToInt32(fMain.Top);
             json["Form"]["Left"] = Convert.ToInt32(fMain.Left);
 
-            fillJsonFromCombo(cbSend, (JObject) json, "LastMessages", "Message", true);
-            fillJsonFromCombo(cbIP, (JObject)json["Network"], "LastAddresses", "Address");
-            fillJsonFromCombo(cbPort, (JObject)json["Network"], "LastPorts", "Port");
+            cbSend.FillJsonFromCombo((JObject)json, "LastMessages", "Message", true);
+            cbIP.FillJsonFromCombo( (JObject)json["Network"], "LastAddresses", "Address");
+            cbPort.FillJsonFromCombo( (JObject)json["Network"], "LastPorts", "Port");
 
             //save settings
             string jsonFile = AppDomain.CurrentDomain.BaseDirectory + "settings.json";
             try
             {
-                File.WriteAllText(jsonFile, Newtonsoft.Json.JsonConvert.SerializeObject(json, Newtonsoft.Json.Formatting.Indented));
+                File.WriteAllText(jsonFile, 
+                    Newtonsoft.Json.JsonConvert.SerializeObject(json, 
+                        Newtonsoft.Json.Formatting.Indented));
             }
             catch (Exception)
             {
@@ -368,9 +272,19 @@ namespace testICAM
             string s = cbPeriod.SelectedValue.ToString();
             if (s.Length > 0)
             {
-                periodSendig = Int32.Parse(s);
+                periodSendig = int.Parse(s);
                 timerSend.Interval = new TimeSpan(0, 0, periodSendig);
             }
+        }
+
+        private void rbServer_Checked(object sender, RoutedEventArgs e)
+        {
+            isServer = true;
+        }
+
+        private void rbServer_Unchecked(object sender, RoutedEventArgs e)
+        {
+            isServer = false;
         }
 
         private void btnClearSend_Click(object sender, RoutedEventArgs e)
@@ -378,48 +292,34 @@ namespace testICAM
             cbSend.Text = "";
         }
 
-        private void btnSend_Click(object sender, RoutedEventArgs e)
+        private void btnSend_Click(object sender, RoutedEventArgs ea)
         {
-            if ( addTextToCombo(cbSend))
+            if (!isConnected)
+                LogAdd("Не подключено");
+            else
+            if ( cbSend.CheckTextAndAdd() )
             {
                 string dataString = cbSend.Text;   
 
                 isSending = isRepeat;
+                
+                LogAdd("send: " + dataString.ToHex(isHex));
 
-                switch (connectionMode)
+                try
                 {
-                    case ConnectionModeEnum.Serial:
-                        try
-                        {
-                            serialPort.Write(Regex.Unescape(dataString));
-                            LogAdd("Send: ", LogFlags.noReturn);
-                            LogAdd(dataString, (isHex ? LogFlags.toHex : LogFlags.None) | LogFlags.noTime);
-                        }
-                        catch (Exception exception)
-                        {
-                            LogAdd("Send: " + exception.Message);
-                        }
-                        break;
-                    case ConnectionModeEnum.Network:
-                        try
-                        {
-
-                        }
-                        catch (Exception)
-                        {
-
-                            throw;
-                        }
-                        break;
-                    default:
-                        LogAdd("Не подключено");
-                        break;
+                    if (isSerialPortMode)
+                        serialPort.Write(Regex.Unescape(dataString));
+                    else
+                        ;                    
+                }
+                catch (Exception e)
+                {
+                    LogAdd("send: " + e.Message);
                 }
             }
-
         }
 
-        private void dispatcherTimerSend_Tick(object sender, EventArgs e)
+        private void DispatcherTimerSend_Tick(object sender, EventArgs e)
         {
             if (isSending) btnSend_Click(null, null);
         }

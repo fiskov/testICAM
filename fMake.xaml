@@ -1,4 +1,4 @@
-﻿<Window x:Name="fMakeSendString" x:Class="testICAM.fMake"
+﻿<Window x:Name="FormMakeString" x:Class="testICAM.fMake"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"

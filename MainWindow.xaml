@@ -4,11 +4,17 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ports="clr-namespace:System.IO.Ports;assembly=System"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:io="clr-namespace:System.IO.Ports;assembly=System"        
         xmlns:local="clr-namespace:testICAM"
         mc:Ignorable="d"
         Title="Test ICAM" Height="375" Width="770" MinWidth="770" MinHeight="230" Closing="fMain_Closing">
     <Window.Resources>
-        
+        <ObjectDataProvider MethodName="GetValues" ObjectType="{x:Type sys:Enum}" x:Key="ParityValues">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="io:Parity" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
         <ObjectDataProvider ObjectType="{x:Type ports:SerialPort}" MethodName="GetPortNames" x:Key="portNames"/>
     </Window.Resources>
     <Grid Background="#FFE5E5E5">
@@ -25,7 +31,7 @@
             <GroupBox Header="Режим работы">
                 <StackPanel Orientation="Vertical">
                     <RadioButton x:Name="rbClient" Content="Клиент" IsChecked="True" Margin="3,8,3,6" VerticalAlignment="Center" GroupName="WorkMode"/>
-                    <RadioButton x:Name="rbServer" Content="Имитация" Margin="3,5" VerticalAlignment="Center" GroupName="WorkMode"/>
+                    <RadioButton x:Name="rbServer" Content="Имитация" Margin="3,5" VerticalAlignment="Center" GroupName="WorkMode" ToolTip="Приложение будет отвечать на запросы по указанным данным из файла настроек" Checked="rbServer_Checked" Unchecked="rbServer_Unchecked"/>
                 </StackPanel>
             </GroupBox>
             <GroupBox Header="Подключение">
@@ -46,12 +52,8 @@
                                 <ComboBoxItem Content="115200"/>
                             </ComboBox>
                             <Label Content="Четность" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbSerial}"/>
-                            <ComboBox x:Name="cbParity" Margin="3" IsReadOnly="True" SelectedIndex="1" IsEnabled="{Binding IsChecked, ElementName=rbSerial}">
-                                <ComboBoxItem Content="None"/>
-                                <ComboBoxItem Content="Even"/>
-                                <ComboBoxItem Content="Odd"/>
-                            </ComboBox>
-                        </StackPanel>
+                                <ComboBox x:Name="cbParity" Margin="3" IsReadOnly="True" SelectedIndex="2" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" ItemsSource="{Binding Source={StaticResource ParityValues}}"/>
+                            </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <RadioButton x:Name="rbNetwork" Content="TCP/IP" Margin="3" Width="83" GroupName="ConnectionType" VerticalAlignment="Center"/>
                             <ComboBox x:Name="cbIP" IsEditable="True" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Width="110"/>
@@ -95,7 +97,9 @@
             </Grid>
 
         </StackPanel>
-        <TextBox x:Name="txtLog" Margin="3" IsUndoEnabled="False" Grid.Row="1" Grid.Column="0" VerticalScrollBarVisibility="Visible" FontFamily="Lucida Console" IsReadOnly="True"/>
+
+        <TextBox x:Name="txtLog" Margin="3" IsUndoEnabled="False" Grid.Row="1" Grid.Column="0" VerticalScrollBarVisibility="Visible" FontFamily="Lucida Console" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"/>
+
         <StackPanel Grid.Row="2" Orientation="Horizontal">
             <CheckBox x:Name="chkLogTime" Content="Time" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="3" IsChecked="True"/>
             <CheckBox x:Name="chkLogHex" Content="Hex" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="3" Checked="chkLogHex_Checked" Unchecked="chkLogHex_Unchecked"/>

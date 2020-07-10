@@ -1,17 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Text.RegularExpressions;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace testICAM
 {
@@ -33,10 +21,9 @@ namespace testICAM
             s += regex.Replace(cbLine.Text, "");
             s += $"/\x0D";
 
-            s = Regex.Escape(s);
-            //MainWindow.ViewModel.SendString = s;
+            SendString = Regex.Escape(s);
 
-            Close();
+            this.DialogResult = true;
         }
 
         private void btnAddAll_Click(object sender, RoutedEventArgs e)
@@ -48,11 +35,15 @@ namespace testICAM
                 for (int i = 0; i < 5; i++) s += "AHAH" + j + "4" + i + "/\r";
             }
 
-            s = Regex.Escape(s);
+            SendString = Regex.Escape(s);
 
-            //MainWindow.ViewModel.SendString = s;
+            this.DialogResult = true;
+        }
 
-            Close();
+        public static string SendString
+        {
+            get; set;
         }
     }
+
 }
