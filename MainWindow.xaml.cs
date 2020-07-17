@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
 using System.Net;
@@ -32,12 +33,15 @@ namespace testICAM
         static TcpClient tcpClient;
         static TcpListener tcpListener;
         private bool isConnected;
-        private bool isServer;
+        private bool isImitation;
+        private Dictionary<string, string> imitationDict;
+
 
         public MainWindow()
         {
             InitializeComponent();
 
+            imitationDict = new Dictionary<string, string>();
             //Load settings            
             string jsonFile = AppDomain.CurrentDomain.BaseDirectory + "settings.json";
             try
@@ -53,11 +57,13 @@ namespace testICAM
                     cbSend.FillComboFromJson( json, "LastMessages", "Message", true);
                     cbIP.FillComboFromJson( (JObject)json["Network"], "LastAddresses", "Address");
                     cbPort.FillComboFromJson( (JObject)json["Network"], "LastPorts", "Port");
+
+                    imitationDict.FillDictionaryFromJson(json, "Simulator", "Request", "Answer");
                 }
             }
             catch (Exception e)
             {
-                LogAdd($"Ошибка загрузки настроек [{jsonFile}] {Environment.NewLine} {e.Message}");
+                LogAdd($"Load config error [{jsonFile}] {Environment.NewLine} {e.Message}");
             }
             cbSerialPort.SelectedIndex = 0;
 
@@ -68,18 +74,18 @@ namespace testICAM
             timerSend.Interval = new TimeSpan(0, 0, periodSendig);
             timerSend.Start();
 
-            LogAdd("Старт");
+            LogAdd("Start");
         }
 
         private void btnDisconnect_Click(object sender, RoutedEventArgs e)
         {
-            LogAdd("Отключение");
+            LogAdd("Disconnect");
             if (serialPort.IsOpen) serialPort.Close();
         }
 
         private void btnConnect_Click(object sender, RoutedEventArgs ea)
         {            
-            LogAdd("Подключение: ", LogFlags.noReturn);
+            LogAdd("Connect: ", LogFlags.noReturn);
             isConnected = false;
 
             if (isSerialPortMode) //подключение - последовательный порт
@@ -88,7 +94,7 @@ namespace testICAM
                 int speed = int.Parse(cbSpeed.Text);
                 Parity parity = (Parity)Enum.Parse( typeof(Parity), cbParity.Text );
 
-                LogAdd($"{name}:{speed}, {parity}; ", LogFlags.noReturn);
+                LogAdd($"{name}:{speed}, {parity} - ", LogFlags.noReturn);
 
                 try
                 {
@@ -105,7 +111,7 @@ namespace testICAM
                     json["SerialPort"]["LastPort"]["Name"] = name;
                     json["SerialPort"]["LastPort"]["Speed"] = speed;
                     json["SerialPort"]["LastPort"]["Parity"] = parity.ToString();
-                    LogAdd("Ok");
+                    LogAdd("Ok", LogFlags.noTime);
                 }
             }
             else //подключение по TCP
@@ -143,7 +149,7 @@ namespace testICAM
                         LogAdd("Ok");
                     }
                 } else
-                    LogAdd("Не верно указаны параметры подключения");
+                    LogAdd("Wrong parameters");
             }
         }
 
@@ -189,7 +195,7 @@ namespace testICAM
                 cbSend.Text = fMake.SendString;
         }
 
-        void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
+        void DataReceivedHandler(object sender, SerialDataReceivedEventArgs ea)
         {
             Thread.Sleep(100); //wait all symbols            
             SerialPort sp = (SerialPort)sender;
@@ -199,6 +205,29 @@ namespace testICAM
             Application.Current.Dispatcher.Invoke(new Action(() =>
                 LogAdd("Recv: " + inData.ToHex(isHex))
             ));
+
+            // emulator
+            if (isImitation)
+            {
+                string msg = "Ans : ";
+                try
+                {
+                    string dataString;
+                    if (imitationDict.TryGetValue(inData, out dataString))
+                    {
+                        msg += dataString.ToHex(isHex);
+                        serialPort.Write(Regex.Unescape(dataString));
+                    }
+                }
+                catch (Exception e)
+                {
+                    msg += e.Message;
+                }
+
+                Application.Current.Dispatcher.Invoke(new Action(() =>
+                    LogAdd(msg)
+                ));
+            }
         }
 
         private void rbSerial_Checked(object sender, RoutedEventArgs e)
@@ -231,7 +260,7 @@ namespace testICAM
             if (e.Key == Key.Enter) btnSend_Click(null, null);
         }
 
-        private void fMain_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        private void fMain_Closing(object sender, System.ComponentModel.CancelEventArgs ea)
         {
             json["Form"]["Width"] = Convert.ToInt32(fMain.Width);
             json["Form"]["Height"] = Convert.ToInt32(fMain.Height);
@@ -250,9 +279,9 @@ namespace testICAM
                     Newtonsoft.Json.JsonConvert.SerializeObject(json, 
                         Newtonsoft.Json.Formatting.Indented));
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                MessageBox.Show("Ошибка сохранения настроек");
+                MessageBox.Show("Save config error! "+e.Message);
             }
         }
 
@@ -277,14 +306,14 @@ namespace testICAM
             }
         }
 
-        private void rbServer_Checked(object sender, RoutedEventArgs e)
+        private void rbImitation_Checked(object sender, RoutedEventArgs e)
         {
-            isServer = true;
+            isImitation = true;
         }
 
-        private void rbServer_Unchecked(object sender, RoutedEventArgs e)
+        private void rbImitaion_Unchecked(object sender, RoutedEventArgs e)
         {
-            isServer = false;
+            isImitation = false;
         }
 
         private void btnClearSend_Click(object sender, RoutedEventArgs e)
@@ -295,7 +324,7 @@ namespace testICAM
         private void btnSend_Click(object sender, RoutedEventArgs ea)
         {
             if (!isConnected)
-                LogAdd("Не подключено");
+                LogAdd("Not connected");
             else
             if ( cbSend.CheckTextAndAdd() )
             {
@@ -303,7 +332,7 @@ namespace testICAM
 
                 isSending = isRepeat;
                 
-                LogAdd("send: " + dataString.ToHex(isHex));
+                LogAdd("Send: " + dataString.ToHex(isHex));
 
                 try
                 {
@@ -314,7 +343,7 @@ namespace testICAM
                 }
                 catch (Exception e)
                 {
-                    LogAdd("send: " + e.Message);
+                    LogAdd("Send: " + e.Message);
                 }
             }
         }

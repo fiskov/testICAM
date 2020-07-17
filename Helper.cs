@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.IO.Ports;
 using System.Net;
 using System.Net.Sockets;
@@ -64,6 +65,20 @@ namespace testICAM
 
             //if (cb.Items.Count > 0) 
             cb.SelectedIndex = 0;
+        }
+
+        public static void FillDictionaryFromJson(this Dictionary<string, string> dict,
+            JObject j, string sArray, string sField1, string sField2)
+        {
+            string s1, s2;
+            dict.Clear();
+
+            foreach (var currentItem in j[sArray])
+            {
+                s1 = currentItem.Value<string>(sField1);
+                s2 = currentItem.Value<string>(sField2);
+                dict.Add(s1, s2);
+            }
         }
 
         public static string ToHex(this string message, bool toHex)

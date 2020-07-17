@@ -31,7 +31,7 @@
             <GroupBox Header="Режим работы">
                 <StackPanel Orientation="Vertical">
                     <RadioButton x:Name="rbClient" Content="Клиент" IsChecked="True" Margin="3,8,3,6" VerticalAlignment="Center" GroupName="WorkMode"/>
-                    <RadioButton x:Name="rbServer" Content="Имитация" Margin="3,5" VerticalAlignment="Center" GroupName="WorkMode" ToolTip="Приложение будет отвечать на запросы по указанным данным из файла настроек" Checked="rbServer_Checked" Unchecked="rbServer_Unchecked"/>
+                    <RadioButton x:Name="rbImitaion" Content="Имитация" Margin="3,5" VerticalAlignment="Center" GroupName="WorkMode" ToolTip="Приложение будет отвечать на запросы по указанным данным из файла настроек" Checked="rbImitation_Checked" Unchecked="rbImitaion_Unchecked"/>
                 </StackPanel>
             </GroupBox>
             <GroupBox Header="Подключение">
