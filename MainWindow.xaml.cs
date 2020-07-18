@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -29,13 +30,14 @@ namespace testICAM
         enum LogFlags { None = 0, noReturn = 1, toFile = 2, noTime = 4 };
 
         static SerialPort serialPort;
-
-        static TcpClient tcpClient;
         static TcpListener tcpListener;
-        private bool isConnected;
-        private bool isImitation;
-        private Dictionary<string, string> imitationDict;
+        private CancellationTokenSource cts;
+        static IPEndPoint localIP;
 
+        private bool isConnected, isImitation, isAnyIP = true;
+
+        private Dictionary<string, string> imitationDict;
+        private int timeout;
 
         public MainWindow()
         {
@@ -65,6 +67,9 @@ namespace testICAM
             {
                 LogAdd($"Load config error [{jsonFile}] {Environment.NewLine} {e.Message}");
             }
+
+            string[] ports = SerialPort.GetPortNames();
+            cbSerialPort.ItemsSource = ports;
             cbSerialPort.SelectedIndex = 0;
 
             serialPort = new SerialPort();
@@ -74,18 +79,28 @@ namespace testICAM
             timerSend.Interval = new TimeSpan(0, 0, periodSendig);
             timerSend.Start();
 
+            cts = new CancellationTokenSource();
+
             LogAdd("Start");
         }
 
         private void btnDisconnect_Click(object sender, RoutedEventArgs e)
         {
             LogAdd("Disconnect");
-            if (serialPort.IsOpen) serialPort.Close();
+
+            if (serialPort != null)
+                if (serialPort.IsOpen) serialPort.Close();
+            
+
+            if (tcpListener != null)
+            {
+                cts.Cancel();
+                tcpListener.Stop();
+            }
         }
 
         private void btnConnect_Click(object sender, RoutedEventArgs ea)
-        {            
-            LogAdd("Connect: ", LogFlags.noReturn);
+        {                        
             isConnected = false;
 
             if (isSerialPortMode) //подключение - последовательный порт
@@ -94,63 +109,77 @@ namespace testICAM
                 int speed = int.Parse(cbSpeed.Text);
                 Parity parity = (Parity)Enum.Parse( typeof(Parity), cbParity.Text );
 
-                LogAdd($"{name}:{speed}, {parity} - ", LogFlags.noReturn);
+                LogAdd($"Connect: {name}:{speed}, {parity} - ", LogFlags.noReturn);
 
                 try
                 {
                     isConnected = serialPort.ConnectTo(name, speed, parity);
+                    serialPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
                 }
                 catch (Exception e)
                 {
-                    LogAdd(e.Message);
+                    LogAdd(e.Message, LogFlags.noTime);
                 }
-                finally
-                {
-                    serialPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
 
-                    json["SerialPort"]["LastPort"]["Name"] = name;
-                    json["SerialPort"]["LastPort"]["Speed"] = speed;
-                    json["SerialPort"]["LastPort"]["Parity"] = parity.ToString();
-                    LogAdd("Ok", LogFlags.noTime);
-                }
+                json["SerialPort"]["LastPort"]["Name"] = name;
+                json["SerialPort"]["LastPort"]["Speed"] = speed;
+                json["SerialPort"]["LastPort"]["Parity"] = parity.ToString();                               
             }
             else //подключение по TCP
             {
                 IPAddress ipAddress = IPAddress.Any;
                 string IP = cbIP.Text;
-                int port, timeout;
+                int port;
 
-                if (cbIP.CheckTextAndAdd() && cbPort.CheckTextAndAdd() && 
+                if (cbIP.CheckTextAndAdd() && 
+                    cbPort.CheckTextAndAdd() && 
                     IPAddress.TryParse(cbIP.Text, out ipAddress) &&
                     int.TryParse(cbPort.Text, out port) && 
                     int.TryParse(cbTimeout.Text, out timeout))
                 {
-                    LogAdd($"{IP}:{port}, timeout={timeout} ms; ", LogFlags.noReturn);
-
                     try
                     {
-                        if (tcpClient == null)
-                            tcpClient = new TcpClient();
+                        Mouse.OverrideCursor = Cursors.Wait;
 
-                        //tcpClient.Close();
-                        tcpClient.SendTimeout = timeout;
-                        tcpClient.ReceiveTimeout = timeout;
+                        if (isImitation)
+                        {
+                            if (isAnyIP) ipAddress = IPAddress.Any;
+                            
+                            LogAdd($"Listen: {ipAddress}:{port}; ", LogFlags.noReturn);
 
-                        tcpClient.Connect(IP, port);
+                            if (tcpListener == null)
+                                tcpListener = new TcpListener(ipAddress, port);
+
+                            tcpListener.Start();
+                            _ = HandleConnectionAsync(tcpListener, cts.Token);
+                            isConnected = true;
+                        }
+                        else
+                        {
+                            LogAdd($"Connect: {ipAddress}:{port}, timeout={timeout} ms; ", LogFlags.noReturn);
+                            localIP = new IPEndPoint(ipAddress, port);
+                            using (var tcpClient = new TcpClient())
+                            {
+                                var result = tcpClient.BeginConnect(localIP.Address, localIP.Port, null, null);
+
+                                if (!result.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(timeout)))
+                                    throw new TimeoutException();
+                                
+                                tcpClient.EndConnect(result); // we have connected
+                                isConnected = tcpClient.Connected;
+                            }
+                        }
                     }
                     catch (Exception e)
                     {
-                        LogAdd(e.Message);
-                    }
-                    finally
-                    {
-                        isConnected = true;
-                        json["Network"]["TimeOut"] = timeout;
-                        LogAdd("Ok");
+                        LogAdd(e.Message, LogFlags.noTime);
                     }
                 } else
-                    LogAdd("Wrong parameters");
+                    LogAdd("Wrong parameters", LogFlags.noTime);
             }
+
+            Mouse.OverrideCursor = null;
+            if (isConnected) LogAdd("Ok", LogFlags.noTime);
         }
 
         static readonly object writeLock = new object();
@@ -161,7 +190,7 @@ namespace testICAM
 
             //add time
             if ((chkLogTime.IsChecked.Value == true) && (flags.HasFlag(LogFlags.noTime) == false))
-                message = DateTime.Now.ToString("yyyy-MM-dd HH\\:mm\\:ss") + "> " + message;
+                message = DateTime.Now.ToString("yyyy-MM-dd HH\\:mm\\:ss.fff") + "> " + message;
 
             //new line
             if (!flags.HasFlag(LogFlags.noReturn)) message += Environment.NewLine;
@@ -212,8 +241,7 @@ namespace testICAM
                 string msg = "Ans : ";
                 try
                 {
-                    string dataString;
-                    if (imitationDict.TryGetValue(inData, out dataString))
+                    if (imitationDict.TryGetValue(inData, out string dataString))
                     {
                         msg += dataString.ToHex(isHex);
                         serialPort.Write(Regex.Unescape(dataString));
@@ -252,7 +280,8 @@ namespace testICAM
 
         private void btnSerialRefresh_Click(object sender, RoutedEventArgs e)
         {
-            cbSerialPort.Items.Refresh();
+            string[] ports = SerialPort.GetPortNames();
+            cbSerialPort.ItemsSource = ports;
         }
 
         private void cbSend_KeyDown(object sender, KeyEventArgs e)
@@ -311,9 +340,19 @@ namespace testICAM
             isImitation = true;
         }
 
+        private void chkAnyIP_Unchecked(object sender, RoutedEventArgs e)
+        {
+            isAnyIP = true;
+        }
+
         private void rbImitaion_Unchecked(object sender, RoutedEventArgs e)
         {
             isImitation = false;
+        }
+
+        private void chkAnyIP_Checked(object sender, RoutedEventArgs e)
+        {
+            isAnyIP = false;
         }
 
         private void btnClearSend_Click(object sender, RoutedEventArgs e)
@@ -323,27 +362,58 @@ namespace testICAM
 
         private void btnSend_Click(object sender, RoutedEventArgs ea)
         {
-            if (!isConnected)
-                LogAdd("Not connected");
-            else
             if ( cbSend.CheckTextAndAdd() )
             {
                 string dataString = cbSend.Text;   
 
-                isSending = isRepeat;
+                isSending = isRepeat;                
                 
+                dataString = Regex.Unescape(dataString);
                 LogAdd("Send: " + dataString.ToHex(isHex));
 
                 try
                 {
                     if (isSerialPortMode)
-                        serialPort.Write(Regex.Unescape(dataString));
+                    {
+                        if (!serialPort.IsOpen)
+                            btnConnect_Click(sender, null);
+                        serialPort.Write(dataString);
+                    }
                     else
-                        ;                    
+                    {
+                        using (var tcpClient = new TcpClient())
+                        {
+                            tcpClient.SendTimeout = timeout;
+                            tcpClient.ReceiveTimeout = timeout;
+
+                            var result = tcpClient.BeginConnect(localIP.Address, localIP.Port, null, null);
+
+                            if (!result.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(timeout)))
+                                throw new TimeoutException();
+
+                            tcpClient.EndConnect(result); // we have connected
+
+                            using (var networkStream = tcpClient.GetStream())
+                            using (BinaryWriter writer = new BinaryWriter(networkStream))
+                            using (BinaryReader reader = new BinaryReader(networkStream))
+                            {
+                                writer.Write(dataString);
+                                writer.Flush();
+                                Byte[] bytes = new byte[4096];
+
+                                var size = reader.Read( bytes, 0, 4096);
+                                if (size > 0)
+                                {                                    
+                                    string inData = Encoding.ASCII.GetString(bytes, 0, size); //the message incoming
+                                    LogAdd("Recv: " + inData.ToHex(isHex));
+                                }
+                            }
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
-                    LogAdd("Send: " + e.Message);
+                    LogAdd("Send: |" + e.GetType().ToString() +"| "+ e.Message); ;
                 }
             }
         }
@@ -351,6 +421,57 @@ namespace testICAM
         private void DispatcherTimerSend_Tick(object sender, EventArgs e)
         {
             if (isSending) btnSend_Click(null, null);
+        }
+
+        async Task HandleConnectionAsync(TcpListener listener, CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                TcpClient client = await listener.AcceptTcpClientAsync();
+                await EchoAsync(client, ct);
+            }
+        }
+
+        async Task EchoAsync(TcpClient client, CancellationToken ct)
+        {
+            var buf = new byte[4096];
+            var stream = client.GetStream();
+            string inData;
+            while (!ct.IsCancellationRequested)
+            {
+                var amountRead = await stream.ReadAsync(buf, 0, buf.Length, ct);
+                if (amountRead > 0)
+                {
+                    inData = Encoding.Default.GetString(buf, 0, amountRead);
+                    LogAdd("Recv: " + inData.ToHex(isHex));
+
+                    string msg = "";
+                    try
+                    {
+                        if (imitationDict.TryGetValue(inData, out string dataString))
+                        {
+                            msg = "Ans : " + dataString.ToHex(isHex);
+
+                            buf = Encoding.ASCII.GetBytes(dataString);
+                        
+                            await stream.WriteAsync(buf, 0, dataString.Length, ct);
+                        } else
+                        {
+                            msg = "unknown command";
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        msg += e.Message;
+                    }
+                    finally
+                    {
+                        LogAdd(msg);
+                    }
+                }
+
+                if (amountRead == 0) break; //end of stream.
+            }
         }
     }
 }

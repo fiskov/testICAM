@@ -3,10 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:ports="clr-namespace:System.IO.Ports;assembly=System"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
-        xmlns:io="clr-namespace:System.IO.Ports;assembly=System"        
-        xmlns:local="clr-namespace:testICAM"
+        xmlns:io="clr-namespace:System.IO.Ports;assembly=System" 
         mc:Ignorable="d"
         Title="Test ICAM" Height="375" Width="770" MinWidth="770" MinHeight="230" Closing="fMain_Closing">
     <Window.Resources>
@@ -14,8 +12,7 @@
             <ObjectDataProvider.MethodParameters>
                 <x:Type TypeName="io:Parity" />
             </ObjectDataProvider.MethodParameters>
-        </ObjectDataProvider>
-        <ObjectDataProvider ObjectType="{x:Type ports:SerialPort}" MethodName="GetPortNames" x:Key="portNames"/>
+        </ObjectDataProvider>        
     </Window.Resources>
     <Grid Background="#FFE5E5E5">
         <Grid.RowDefinitions>
@@ -28,53 +25,55 @@
         </Grid.ColumnDefinitions>
         <StackPanel  Background="#FFE5E5E5" Grid.Row="0">
             <StackPanel Orientation="Horizontal">
-            <GroupBox Header="Режим работы">
-                <StackPanel Orientation="Vertical">
-                    <RadioButton x:Name="rbClient" Content="Клиент" IsChecked="True" Margin="3,8,3,6" VerticalAlignment="Center" GroupName="WorkMode"/>
-                    <RadioButton x:Name="rbImitaion" Content="Имитация" Margin="3,5" VerticalAlignment="Center" GroupName="WorkMode" ToolTip="Приложение будет отвечать на запросы по указанным данным из файла настроек" Checked="rbImitation_Checked" Unchecked="rbImitaion_Unchecked"/>
-                </StackPanel>
-            </GroupBox>
-            <GroupBox Header="Подключение">
-                <StackPanel Orientation="Horizontal">
+                <GroupBox Header="Режим работы">
                     <StackPanel Orientation="Vertical">
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="rbSerial" IsChecked="True" VerticalAlignment="Center" Margin="3" Checked="rbSerial_Checked" Unchecked="rbSerial_Unchecked" Content="COM-порт" Width="83" GroupName="ConnectionType"/>
-                            <ComboBox x:Name="cbSerialPort" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" Margin="3" ItemsSource="{Binding Source={StaticResource portNames}}" Width="84"/>
-                            <Button x:Name="btnSerialRefresh" Content="↻" Margin="3" Click="btnSerialRefresh_Click" IsEnabled="{Binding IsChecked, ElementName=rbSerial}"  Width="19"/>
-                            <Label Content="Скорость" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" VerticalContentAlignment="Center"/>
-                            <ComboBox x:Name="cbSpeed" Margin="3" IsReadOnly="True" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" SelectedIndex="3">
-                                <ComboBoxItem Content="1200"/>
-                                <ComboBoxItem Content="2400"/>
-                                <ComboBoxItem Content="4800"/>
-                                <ComboBoxItem Content="9600"/>
-                                <ComboBoxItem Content="19200"/>
-                                <ComboBoxItem Content="38400"/>
-                                <ComboBoxItem Content="115200"/>
-                            </ComboBox>
-                            <Label Content="Четность" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbSerial}"/>
-                                <ComboBox x:Name="cbParity" Margin="3" IsReadOnly="True" SelectedIndex="2" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" ItemsSource="{Binding Source={StaticResource ParityValues}}"/>
-                            </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="rbNetwork" Content="TCP/IP" Margin="3" Width="83" GroupName="ConnectionType" VerticalAlignment="Center"/>
-                            <ComboBox x:Name="cbIP" IsEditable="True" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Width="110"/>
-                            <Label Content="Порт" Grid.Row="1" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Margin="3"/>
-                            <ComboBox x:Name="cbPort" Margin="3" IsEditable="True"  IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Width="66"/>
-                            <Label Content="Таймаут, мс" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Margin="3"/>
-                            <ComboBox x:Name="cbTimeout" Margin="3" VerticalContentAlignment="Center" SelectedIndex="1" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}">
-                                <ComboBoxItem Content="100"/>
-                                <ComboBoxItem Content="500"/>
-                                <ComboBoxItem Content="1000"/>
-                                <ComboBoxItem Content="3000"/>
-                                <ComboBoxItem Content="10000"/>
-                                </ComboBox>
-                            </StackPanel>
+                        <RadioButton x:Name="rbClient" Content="Клиент" IsChecked="True" Margin="3,8,3,6" VerticalAlignment="Center" GroupName="WorkMode"/>
+                        <RadioButton x:Name="rbImitaion" Content="Имитация" Margin="3,5" VerticalAlignment="Center" GroupName="WorkMode" ToolTip="Приложение будет отвечать на запросы по указанным данным из файла настроек" Checked="rbImitation_Checked" Unchecked="rbImitaion_Unchecked"/>
                     </StackPanel>
-                    <Button x:Name="btnConnect" Content="Подключить" Margin="3" VerticalAlignment="Center" Width="90" Height="41" Click="btnConnect_Click"/>
-                    <Button x:Name="btnDisconnect" Content="Отключить" Margin="3" VerticalAlignment="Center" Width="90" Height="41" Click="btnDisconnect_Click"/>
-                </StackPanel>
-            </GroupBox>
+                </GroupBox>
+                <GroupBox Header="Подключение">
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="rbSerial" IsChecked="True" VerticalAlignment="Center" Margin="3" Checked="rbSerial_Checked" Unchecked="rbSerial_Unchecked" Content="COM-порт" Width="83" GroupName="ConnectionType"/>
+                                <ComboBox x:Name="cbSerialPort" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" Margin="3" Width="84"/>
+                                <Button x:Name="btnSerialRefresh" Content="↻" Margin="3" Click="btnSerialRefresh_Click" IsEnabled="{Binding IsChecked, ElementName=rbSerial}"  Width="19"/>
+                                <Label Content="Скорость" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" VerticalContentAlignment="Center"/>
+                                <ComboBox x:Name="cbSpeed" Margin="3" IsReadOnly="True" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" SelectedIndex="3">
+                                    <ComboBoxItem Content="1200"/>
+                                    <ComboBoxItem Content="2400"/>
+                                    <ComboBoxItem Content="4800"/>
+                                    <ComboBoxItem Content="9600"/>
+                                    <ComboBoxItem Content="19200"/>
+                                    <ComboBoxItem Content="38400"/>
+                                    <ComboBoxItem Content="115200"/>
+                                </ComboBox>
+                                <Label Content="Четность" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbSerial}"/>
+                                <ComboBox x:Name="cbParity" Margin="3" IsReadOnly="True" SelectedIndex="2" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" ItemsSource="{Binding Source={StaticResource ParityValues}}" Width="57"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="rbNetwork" Content="TCP/IP" Margin="3" Width="65" GroupName="ConnectionType" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                <CheckBox x:Name="chkAnyIP" Margin="3,3,1,3" VerticalAlignment="Center" Checked="chkAnyIP_Checked" Unchecked="chkAnyIP_Unchecked" ToolTip="Если установлено, то слушает только указанный IP-адрес"/>
+                                <ComboBox x:Name="cbIP" IsEditable="True" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Width="110" HorizontalAlignment="Right"/>
+                                <Label Content="Порт" Grid.Row="1" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Margin="3" HorizontalAlignment="Right"/>
+                                <ComboBox x:Name="cbPort" Margin="3" IsEditable="True"  IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Width="59" HorizontalAlignment="Right"/>
+                                <Label Content="Таймаут, мс" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Margin="3" HorizontalAlignment="Right"/>
+                                <ComboBox x:Name="cbTimeout" Margin="3" VerticalContentAlignment="Center" SelectedIndex="1" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" HorizontalAlignment="Right" Width="59">
+                                    <ComboBoxItem Content="100"/>
+                                    <ComboBoxItem Content="500"/>
+                                    <ComboBoxItem Content="1000"/>
+                                    <ComboBoxItem Content="3000"/>
+                                    <ComboBoxItem Content="10000"/>
+                                </ComboBox>
+
+                            </StackPanel>
+                        </StackPanel>
+                        <Button x:Name="btnConnect" Content="Подключить" Margin="3" VerticalAlignment="Center" Width="90" Height="41" Click="btnConnect_Click"/>
+                        <Button x:Name="btnDisconnect" Content="Отключить" Margin="3" VerticalAlignment="Center" Width="72" Height="40" Click="btnDisconnect_Click"/>
+                    </StackPanel>
+                </GroupBox>
             </StackPanel>
-            <Grid>
+            <Grid VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="80.533"/>
                     <ColumnDefinition Width="21.6"/>
@@ -84,9 +83,9 @@
                 <Button x:Name="btnMake" Grid.Column="0" Content="Создать..." Margin="3" Click="btnMake_Click"/>
                 <Button x:Name="btnClearSend" Grid.Column="1" Content="x" Margin="3" Click="btnClearSend_Click"/>
                 <ComboBox x:Name="cbSend" Grid.Column="2" Margin="4.6,3,2.8,3.4" IsEditable="True" ToolTip="Transform escaped characters (\t, \r, \n, \xHH)" KeyDown="cbSend_KeyDown"/>
-                <StackPanel Orientation="Horizontal" Grid.Column="3" Margin="0.2,0,-0.4,0.4">
+                <StackPanel Orientation="Horizontal" Grid.Column="3">
                     <Button x:Name="btnSend" Content="Отправить" Margin="3" Width="90" IsEnabled="{Binding IsEnabled, ElementName=btnDisconnect}" Height="24" Click="btnSend_Click" HorizontalAlignment="Right" RenderTransformOrigin="0.504,0.5"/>
-                    <CheckBox x:Name="chkRepeat" Content="Повтор, с" Margin="3" Checked="chkRepeat_Checked" Unchecked="chkRepeat_Unchecked" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                    <CheckBox x:Name="chkRepeat" Content="Повтор, с" Margin="3" Checked="chkRepeat_Checked" Unchecked="chkRepeat_Unchecked" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     <ComboBox x:Name="cbPeriod" HorizontalAlignment="Right" Margin="3" Width="42" SelectedIndex="1" SelectionChanged="cbPeriod_SelectionChanged" SelectedValuePath="Content">
                         <ComboBoxItem Content="1"/>
                         <ComboBoxItem Content="5" IsSelected="True"/>
@@ -98,11 +97,11 @@
 
         </StackPanel>
 
-        <TextBox x:Name="txtLog" Margin="3" IsUndoEnabled="False" Grid.Row="1" Grid.Column="0" VerticalScrollBarVisibility="Visible" FontFamily="Lucida Console" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"/>
+        <TextBox x:Name="txtLog" IsUndoEnabled="False" Grid.Row="1" Grid.Column="0" VerticalScrollBarVisibility="Visible" FontFamily="Lucida Console" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"/>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal">
-            <CheckBox x:Name="chkLogTime" Content="Time" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="3" IsChecked="True"/>
-            <CheckBox x:Name="chkLogHex" Content="Hex" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="3" Checked="chkLogHex_Checked" Unchecked="chkLogHex_Unchecked"/>
+            <CheckBox x:Name="chkLogTime" Content="Time" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="3" IsChecked="True" VerticalAlignment="Center"/>
+            <CheckBox x:Name="chkLogHex" Content="Hex" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="3" Checked="chkLogHex_Checked" Unchecked="chkLogHex_Unchecked" VerticalAlignment="Center"/>
             <Button x:Name="btnLogClear" Content="Очистить" HorizontalAlignment="Left" Margin="3" VerticalAlignment="Center" Width="90" Click="btnLogClear_Click"/>
 
         </StackPanel>

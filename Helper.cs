@@ -101,7 +101,7 @@ namespace testICAM
         public static bool ConnectTo(this SerialPort serialPort, string name, int speed, Parity parity)
         {
             if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Не указан последовательный порт");
+                throw new ArgumentException("Wrong port-name");
 
             serialPort.Close();
             serialPort.PortName = name;
@@ -115,7 +115,7 @@ namespace testICAM
             }
             catch (Exception e)
             {
-                throw new Exception("Ошибка открытия последовательного порта! " + e.Message);
+                throw new Exception(e.Message);
             }
             return serialPort.IsOpen;
         }
