@@ -23,7 +23,7 @@ namespace testICAM
         static JObject json;
         static System.Windows.Threading.DispatcherTimer timerSend;    
         
-        static bool isSerialPortMode = false, isHex = false, isRepeat = false, isSending = false;
+        static bool isSerialPortMode = false, isHex = true, isRepeat = false, isSending = false;
         static int periodSendig = 5;
         
         [Flags]
@@ -34,21 +34,27 @@ namespace testICAM
         private CancellationTokenSource cts;
         static IPEndPoint localIP;
 
-        private bool isConnected, isImitation, isAnyIP = true;
+        private bool isConnected, isImitation;
 
         private Dictionary<string, string> imitationDict;
         private int timeout;
+
+        
+        string logFileName, jsonFileName;
+        
 
         public MainWindow()
         {
             InitializeComponent();
 
+            logFileName = @"./log.txt";
+            jsonFileName = @"./settings.json";            
+            
             imitationDict = new Dictionary<string, string>();
             //Load settings            
-            string jsonFile = AppDomain.CurrentDomain.BaseDirectory + "settings.json";
             try
             {
-                json = (JObject)Newtonsoft.Json.JsonConvert.DeserializeObject(File.ReadAllText(jsonFile));
+                json = (JObject)Newtonsoft.Json.JsonConvert.DeserializeObject(File.ReadAllText(jsonFileName));
                 if (json != null)
                 {
                     fMain.Width = (int)json["Form"]["Width"];
@@ -65,7 +71,7 @@ namespace testICAM
             }
             catch (Exception e)
             {
-                LogAdd($"Load config error [{jsonFile}] {Environment.NewLine} {e.Message}");
+                LogAdd($"Load config error [{jsonFileName}] {Environment.NewLine} {e.Message}");
             }
 
             string[] ports = SerialPort.GetPortNames();
@@ -86,22 +92,32 @@ namespace testICAM
 
         private void btnDisconnect_Click(object sender, RoutedEventArgs e)
         {
-            LogAdd("Disconnect");
+            bool bMsg = false;
 
             if (serialPort != null)
-                if (serialPort.IsOpen) serialPort.Close();
+                if (serialPort.IsOpen) {
+                    bMsg = true;
+                    serialPort.Close();
+                    serialPort.DataReceived -= new SerialDataReceivedEventHandler(DataReceivedHandler);
+                }
             
 
             if (tcpListener != null)
             {
                 cts.Cancel();
                 tcpListener.Stop();
+                tcpListener = null;
+                bMsg = true;
             }
+
+            btnConnect.IsEnabled = true;
+            if (bMsg) LogAdd("Disconnect");
         }
 
         private void btnConnect_Click(object sender, RoutedEventArgs ea)
         {                        
             isConnected = false;
+            btnConnect.IsEnabled = false;
 
             if (isSerialPortMode) //подключение - последовательный порт
             {
@@ -133,7 +149,7 @@ namespace testICAM
 
                 if (cbIP.CheckTextAndAdd() && 
                     cbPort.CheckTextAndAdd() && 
-                    IPAddress.TryParse(cbIP.Text, out ipAddress) &&
+                    (isImitation || IPAddress.TryParse(cbIP.Text, out ipAddress)) &&
                     int.TryParse(cbPort.Text, out port) && 
                     int.TryParse(cbTimeout.Text, out timeout))
                 {
@@ -143,7 +159,7 @@ namespace testICAM
 
                         if (isImitation)
                         {
-                            if (isAnyIP) ipAddress = IPAddress.Any;
+                            ipAddress = IPAddress.Any;
                             
                             LogAdd($"Listen: {ipAddress}:{port}; ", LogFlags.noReturn);
 
@@ -178,6 +194,12 @@ namespace testICAM
                     LogAdd("Wrong parameters", LogFlags.noTime);
             }
 
+            //если подключен последовательный порт или имитация TCP, то кнопка "подключить" остается не доступна
+            if (!(serialPort.IsOpen || 
+                    (!isSerialPortMode && isImitation && isConnected))) {
+                btnConnect.IsEnabled = true;
+            }
+
             Mouse.OverrideCursor = null;
             if (isConnected) LogAdd("Ok", LogFlags.noTime);
         }
@@ -196,11 +218,11 @@ namespace testICAM
             if (!flags.HasFlag(LogFlags.noReturn)) message += Environment.NewLine;
             
             //write to file
-            if (flags.HasFlag(LogFlags.toFile))
+            if (!flags.HasFlag(LogFlags.toFile))
                 lock (writeLock)
                     try
                     {
-                        File.AppendAllText(AppDomain.CurrentDomain.BaseDirectory + "log.txt", message);
+                        File.AppendAllText(logFileName, message);
                     }
                     catch (Exception e)
                     {
@@ -235,12 +257,13 @@ namespace testICAM
                 LogAdd("Recv: " + inData.ToHex(isHex))
             ));
 
-            // emulator
+            // imitation
             if (isImitation)
             {
                 string msg = "Ans : ";
                 try
                 {
+                    //если в словаре есть такая строка, то выдаём её
                     if (imitationDict.TryGetValue(inData, out string dataString))
                     {
                         msg += dataString.ToHex(isHex);
@@ -251,7 +274,7 @@ namespace testICAM
                 {
                     msg += e.Message;
                 }
-
+                //т.к. мы в потоке чтения порта, то взаимодействуем с формой через Invoke
                 Application.Current.Dispatcher.Invoke(new Action(() =>
                     LogAdd(msg)
                 ));
@@ -296,15 +319,15 @@ namespace testICAM
             json["Form"]["Top"] = Convert.ToInt32(fMain.Top);
             json["Form"]["Left"] = Convert.ToInt32(fMain.Left);
 
+            //save combo lists to json
             cbSend.FillJsonFromCombo((JObject)json, "LastMessages", "Message", true);
             cbIP.FillJsonFromCombo( (JObject)json["Network"], "LastAddresses", "Address");
             cbPort.FillJsonFromCombo( (JObject)json["Network"], "LastPorts", "Port");
 
             //save settings
-            string jsonFile = AppDomain.CurrentDomain.BaseDirectory + "settings.json";
             try
             {
-                File.WriteAllText(jsonFile, 
+                File.WriteAllText(jsonFileName, 
                     Newtonsoft.Json.JsonConvert.SerializeObject(json, 
                         Newtonsoft.Json.Formatting.Indented));
             }
@@ -340,19 +363,9 @@ namespace testICAM
             isImitation = true;
         }
 
-        private void chkAnyIP_Unchecked(object sender, RoutedEventArgs e)
-        {
-            isAnyIP = true;
-        }
-
         private void rbImitaion_Unchecked(object sender, RoutedEventArgs e)
         {
             isImitation = false;
-        }
-
-        private void chkAnyIP_Checked(object sender, RoutedEventArgs e)
-        {
-            isAnyIP = false;
         }
 
         private void btnClearSend_Click(object sender, RoutedEventArgs e)
@@ -400,12 +413,18 @@ namespace testICAM
                                 writer.Write(dataString);
                                 writer.Flush();
                                 Byte[] bytes = new byte[4096];
-
-                                var size = reader.Read( bytes, 0, 4096);
-                                if (size > 0)
-                                {                                    
-                                    string inData = Encoding.ASCII.GetString(bytes, 0, size); //the message incoming
-                                    LogAdd("Recv: " + inData.ToHex(isHex));
+                                try
+                                {
+                                    var size = reader.Read(bytes, 0, 4096);
+                                    if (size > 0)
+                                    {
+                                        string inData = Encoding.ASCII.GetString(bytes, 0, size); //the message incoming
+                                        LogAdd("Recv: " + inData.ToHex(isHex));
+                                    }
+                                }
+                                catch (IOException)
+                                {
+                                    LogAdd("Timeout");
                                 }
                             }
                         }
@@ -422,9 +441,10 @@ namespace testICAM
         {
             if (isSending) btnSend_Click(null, null);
         }
-
+        
         async Task HandleConnectionAsync(TcpListener listener, CancellationToken ct)
         {
+            //ждём клиентов
             while (!ct.IsCancellationRequested)
             {
                 TcpClient client = await listener.AcceptTcpClientAsync();
@@ -437,10 +457,18 @@ namespace testICAM
             var buf = new byte[4096];
             var stream = client.GetStream();
             string inData;
+
+            //ждём сообщение от клиента
             while (!ct.IsCancellationRequested)
             {
                 var amountRead = await stream.ReadAsync(buf, 0, buf.Length, ct);
-                if (amountRead > 0)
+
+                //первым пакетом приходит байт с длиной пакета?
+                if (amountRead == 1)
+                    LogAdd("[" + client.Client.RemoteEndPoint.ToString() + "]");
+
+                //вторым пакетом приходит 
+                if (amountRead > 1)
                 {
                     inData = Encoding.Default.GetString(buf, 0, amountRead);
                     LogAdd("Recv: " + inData.ToHex(isHex));
@@ -448,6 +476,7 @@ namespace testICAM
                     string msg = "";
                     try
                     {
+                        //пробуем найти ответ в словаре
                         if (imitationDict.TryGetValue(inData, out string dataString))
                         {
                             msg = "Ans : " + dataString.ToHex(isHex);

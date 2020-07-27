@@ -37,7 +37,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <RadioButton x:Name="rbSerial" IsChecked="True" VerticalAlignment="Center" Margin="3" Checked="rbSerial_Checked" Unchecked="rbSerial_Unchecked" Content="COM-порт" Width="83" GroupName="ConnectionType"/>
                                 <ComboBox x:Name="cbSerialPort" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" Margin="3" Width="84"/>
-                                <Button x:Name="btnSerialRefresh" Content="↻" Margin="3" Click="btnSerialRefresh_Click" IsEnabled="{Binding IsChecked, ElementName=rbSerial}"  Width="19"/>
+                                <Button x:Name="btnSerialRefresh" Content="↻" Margin="3" Click="btnSerialRefresh_Click" IsEnabled="{Binding IsChecked, ElementName=rbSerial}"  Width="19" ToolTip="Обновить список портов"/>
                                 <Label Content="Скорость" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" VerticalContentAlignment="Center"/>
                                 <ComboBox x:Name="cbSpeed" Margin="3" IsReadOnly="True" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" SelectedIndex="3">
                                     <ComboBoxItem Content="1200"/>
@@ -52,9 +52,8 @@
                                 <ComboBox x:Name="cbParity" Margin="3" IsReadOnly="True" SelectedIndex="2" IsEnabled="{Binding IsChecked, ElementName=rbSerial}" ItemsSource="{Binding Source={StaticResource ParityValues}}" Width="57"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
-                                <RadioButton x:Name="rbNetwork" Content="TCP/IP" Margin="3" Width="65" GroupName="ConnectionType" VerticalAlignment="Center" HorizontalAlignment="Left"/>
-                                <CheckBox x:Name="chkAnyIP" Margin="3,3,1,3" VerticalAlignment="Center" Checked="chkAnyIP_Checked" Unchecked="chkAnyIP_Unchecked" ToolTip="Если установлено, то слушает только указанный IP-адрес"/>
-                                <ComboBox x:Name="cbIP" IsEditable="True" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Width="110" HorizontalAlignment="Right"/>
+                                <RadioButton x:Name="rbNetwork" Content="TCP/IP" Margin="3" Width="82" GroupName="ConnectionType" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                <ComboBox x:Name="cbIP" IsEditable="True" Margin="3" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Width="110" HorizontalAlignment="Right" ToolTip="Адрес на который будут посылаться пакеты. В режиме имитации не используется."/>
                                 <Label Content="Порт" Grid.Row="1" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Margin="3" HorizontalAlignment="Right"/>
                                 <ComboBox x:Name="cbPort" Margin="3" IsEditable="True"  IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Width="59" HorizontalAlignment="Right"/>
                                 <Label Content="Таймаут, мс" IsEnabled="{Binding IsChecked, ElementName=rbNetwork}" Margin="3" HorizontalAlignment="Right"/>
@@ -101,7 +100,7 @@
 
         <StackPanel Grid.Row="2" Orientation="Horizontal">
             <CheckBox x:Name="chkLogTime" Content="Time" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="3" IsChecked="True" VerticalAlignment="Center"/>
-            <CheckBox x:Name="chkLogHex" Content="Hex" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="3" Checked="chkLogHex_Checked" Unchecked="chkLogHex_Unchecked" VerticalAlignment="Center"/>
+            <CheckBox x:Name="chkLogHex" Content="Hex" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="3" IsChecked="True" Checked="chkLogHex_Checked" Unchecked="chkLogHex_Unchecked" VerticalAlignment="Center"/>
             <Button x:Name="btnLogClear" Content="Очистить" HorizontalAlignment="Left" Margin="3" VerticalAlignment="Center" Width="90" Click="btnLogClear_Click"/>
 
         </StackPanel>
