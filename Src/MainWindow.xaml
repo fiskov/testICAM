@@ -68,7 +68,7 @@
                             </StackPanel>
                         </StackPanel>
                         <Button x:Name="btnConnect" Content="Подключить" Margin="3" VerticalAlignment="Center" Width="90" Height="41" Click="btnConnect_Click"/>
-                        <Button x:Name="btnDisconnect" Content="Отключить" Margin="3" VerticalAlignment="Center" Width="72" Height="40" Click="btnDisconnect_Click"/>
+                        <Button x:Name="btnDisconnect" Content="Отключить" Margin="3" VerticalAlignment="Center" Width="72" Height="41" Click="btnDisconnect_Click"/>
                     </StackPanel>
                 </GroupBox>
             </StackPanel>
@@ -81,7 +81,13 @@
                 </Grid.ColumnDefinitions>
                 <Button x:Name="btnMake" Grid.Column="0" Content="Создать..." Margin="3" Click="btnMake_Click"/>
                 <Button x:Name="btnClearSend" Grid.Column="1" Content="x" Margin="3" Click="btnClearSend_Click"/>
-                <ComboBox x:Name="cbSend" Grid.Column="2" Margin="4.6,3,2.8,3.4" IsEditable="True" ToolTip="Transform escaped characters (\t, \r, \n, \xHH)" KeyDown="cbSend_KeyDown"/>
+                <ComboBox x:Name="cbSend" Grid.Column="2" Margin="4.6,3,2.8,3.4" IsEditable="True" ToolTip="Текст для отправки. Поддерживаются ESC-последовательности (\t, \r, \n, \xHH)" KeyDown="cbSend_KeyDown">
+                    <ComboBox.ItemContainerStyle>
+                        <Style TargetType="ComboBoxItem">
+                            <Setter Property="Width" Value="{Binding ActualWidth, ElementName=cbSend}"/>
+                        </Style>
+                    </ComboBox.ItemContainerStyle>
+                </ComboBox>
                 <StackPanel Orientation="Horizontal" Grid.Column="3">
                     <Button x:Name="btnSend" Content="Отправить" Margin="3" Width="90" IsEnabled="{Binding IsEnabled, ElementName=btnDisconnect}" Height="24" Click="btnSend_Click" HorizontalAlignment="Right" RenderTransformOrigin="0.504,0.5"/>
                     <CheckBox x:Name="chkRepeat" Content="Повтор, с" Margin="3" Checked="chkRepeat_Checked" Unchecked="chkRepeat_Unchecked" HorizontalAlignment="Right" VerticalAlignment="Center"/>

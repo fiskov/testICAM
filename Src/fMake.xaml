@@ -5,58 +5,53 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:testICAM"
         mc:Ignorable="d"
-        Title="Создание строки для отправки" Height="266" Width="510" ResizeMode="NoResize" Topmost="True">
-    <Grid Background="#F0F0F0">
-        <StackPanel Orientation="Vertical">
-            <StackPanel>
-                <TextBlock TextWrapping="WrapWithOverflow" Margin="5">
-                    На заводе "Экран" имеются разные типы инспекционных машин из семейства SGCC: SelCAM, ICAM, M320 и др.<LineBreak/>
+        Title="Создание строки для отправки" Width="510" ResizeMode="NoResize" Topmost="True" SizeToContent="WidthAndHeight">
+
+    <StackPanel Orientation="Vertical" Background="#F0F0F0">
+        <TextBlock TextWrapping="WrapWithOverflow" Margin="5">
+                    На заводе "Экран" имеются разные типы инспекционных машин из семейства SGCC: <LineBreak/>SelCAM, ICAM, M320 и др.<LineBreak/>
                     Для проверки следует отправить машине команду вида AHAH324/&lt;CR&gt;<LineBreak/>
                     В которой 3 - тип машины, 24 - номер машины (Линия 2.4),<LineBreak/>
                     &lt;CR&gt; - символ 0x0D<LineBreak/>
                     При правильном подключении устройство должно ответить RHRH324/&lt;CR&gt; <LineBreak/><LineBreak/>
-                    Допустимо отправить одновременно несколько команд для различных комбинаций типов машин и адресов.
+                    Допустимо отправить одновременно несколько команд для различных комбинаций <LineBreak/>типов машин и адресов.
                     В таком случае машина ответит только на свою команду.
-                </TextBlock> 
-            </StackPanel>
-            <StackPanel Orientation="Horizontal">
-                <Label Content="Тип" Margin="3"/>
-                <ComboBox x:Name="cbType" Margin="3" VerticalAlignment="Center" Width="197" FontFamily="Lucida Console" SelectedIndex="2" IsReadOnly="True">
-                    <ComboBoxItem Content=" 1 = SGCC   Mouldreader"/>
-                    <ComboBoxItem Content=" 2 = EKF    Mouldreader"/>
-                    <ComboBoxItem Content=" 3 = B&amp;S    Mouldreader"/>
-                    <ComboBoxItem Content=" 4 = SGCC   Alphacam"/>
-                    <ComboBoxItem Content=" 5 = SGCC   Deltacam"/>
-                    <ComboBoxItem Content=" 6 = INEX   5 x 512"/>
-                    <ComboBoxItem Content=" 7 = INEX   Superscan"/>
-                    <ComboBoxItem Content=" 8 = INEX   Superinsp II"/>
-                    <ComboBoxItem Content=" 9 = AGR    HS-OLT"/>
-                    <ComboBoxItem Content="10 = ARCNET GATEWAY"/>
-                    <ComboBoxItem Content="11 = TIM    by Arcnet LAN"/>
-                    <ComboBoxItem Content="12 = MSC    Multistation"/>
-                    <ComboBoxItem Content="13 = AGR    PCC"/>
-                    <ComboBoxItem Content="14 = EKF    Fieldbus"/>
-                    <ComboBoxItem Content="15 = ???"/>
-                </ComboBox>
+        </TextBlock>
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Тип" Margin="3"/>
+            <ComboBox x:Name="cbType" Margin="3" VerticalAlignment="Center" Width="197" FontFamily="Lucida Console" SelectedIndex="2" IsReadOnly="True">
+                <ComboBoxItem Content=" 1 = SGCC   Mouldreader"/>
+                <ComboBoxItem Content=" 2 = EKF    Mouldreader"/>
+                <ComboBoxItem Content=" 3 = B&amp;S    Mouldreader"/>
+                <ComboBoxItem Content=" 4 = SGCC   Alphacam"/>
+                <ComboBoxItem Content=" 5 = SGCC   Deltacam"/>
+                <ComboBoxItem Content=" 6 = INEX   5 x 512"/>
+                <ComboBoxItem Content=" 7 = INEX   Superscan"/>
+                <ComboBoxItem Content=" 8 = INEX   Superinsp II"/>
+                <ComboBoxItem Content=" 9 = AGR    HS-OLT"/>
+                <ComboBoxItem Content="10 = ARCNET GATEWAY"/>
+                <ComboBoxItem Content="11 = TIM    by Arcnet LAN"/>
+                <ComboBoxItem Content="12 = MSC    Multistation"/>
+                <ComboBoxItem Content="13 = AGR    PCC"/>
+                <ComboBoxItem Content="14 = EKF    Fieldbus"/>
+                <ComboBoxItem Content="15 = ???"/>
+            </ComboBox>
 
-                <Label Content="Линия" Margin="3"/>
-                <ComboBox x:Name="cbLine" Margin="3" SelectedIndex="3" VerticalAlignment="Center">
-                    <ComboBoxItem Content="Линия 2.1"/>
-                    <ComboBoxItem Content="Линия 2.2"/>
-                    <ComboBoxItem Content="Линия 2.3"/>
-                    <ComboBoxItem Content="Линия 2.4"/>
-                    <ComboBoxItem Content="Линия 4.0"/>
-                    <ComboBoxItem Content="Линия 4.1"/>
-                    <ComboBoxItem Content="Линия 4.2"/>
-                    <ComboBoxItem Content="Линия 5.1"/>
-                    <ComboBoxItem Content="Линия 5.2"/>
-                    <ComboBoxItem Content="Линия 5.3"/>
-                </ComboBox>
-                <Button x:Name="btnAddSingle" Content="Добавить в строку" Margin="5" Padding="5" Click="btnAddSingle_Click"/>                
-            </StackPanel>
-            <StackPanel>
-                <Button x:Name="btnAddAll" Content="Добавить все возможные варианты" Margin="5" Height="35" IsDefault="True" Click="btnAddAll_Click"/>
-            </StackPanel>
+            <Label Content="Линия" Margin="3"/>
+            <ComboBox x:Name="cbLine" Margin="3" SelectedIndex="3" VerticalAlignment="Center">
+                <ComboBoxItem Content="Линия 2.1"/>
+                <ComboBoxItem Content="Линия 2.2"/>
+                <ComboBoxItem Content="Линия 2.3"/>
+                <ComboBoxItem Content="Линия 2.4"/>
+                <ComboBoxItem Content="Линия 4.0"/>
+                <ComboBoxItem Content="Линия 4.1"/>
+                <ComboBoxItem Content="Линия 4.2"/>
+                <ComboBoxItem Content="Линия 5.1"/>
+                <ComboBoxItem Content="Линия 5.2"/>
+                <ComboBoxItem Content="Линия 5.3"/>
+            </ComboBox>
+            <Button x:Name="btnAddSingle" Content="Добавить в строку" Margin="5" Padding="5" Click="btnAddSingle_Click"/>
         </StackPanel>
-    </Grid>
+        <Button x:Name="btnAddAll" Content="Добавить все возможные варианты" Margin="5" Height="35" IsDefault="True" Click="btnAddAll_Click"/>
+    </StackPanel>
 </Window>
